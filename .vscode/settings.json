@@ -1,0 +1,28 @@
+{
+    "files.exclude": {
+        "node_modules": true,
+        ".pnp": true,
+        "**/.pnp.js": true,
+        "coverage": true,
+        ".next/": true,
+        "out/": true,
+        "build": true,
+        "**/.DS_Store": true,
+        "**/*.pem": true,
+        "**/bs": true,
+        "**/.merlin": true,
+        "**/lib/": true,
+        "**/*.bs.js": true,
+        "**/.bsb.lock": true,
+        "**/npm-debug.log*": true,
+        "**/yarn-debug.log*": true,
+        "**/yarn-error.log*": true,
+        "**/.env.local": true,
+        "**/.env.development.local": true,
+        "**/.env.test.local": true,
+        "**/.env.production.local": true,
+        "**/.vercel": true,
+        "node_modules/bs-platform/esy.lock/**/*": false,
+        "node_modules/@ampproject/toolbox-core/lib/**/.cache": true
+    }
+}

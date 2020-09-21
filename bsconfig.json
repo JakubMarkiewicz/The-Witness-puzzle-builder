@@ -12,9 +12,15 @@
     {
       "dir": "bindings",
       "subdirs": true
+    },
+    {
+      "dir": "types"
     }
   ],
-  "bs-dependencies": ["reason-react"],
+  "bs-dependencies": ["reason-react", "bs-webapi", "re-classnames"],
+  "ppx-flags": [
+    ["@dylanirlbeck/tailwind-ppx/bin/tailwind-ppx", "-path ./tailwind.css"]
+  ],
   "reason": { "react-jsx": 3 },
   "package-specs": {
     "module": "es6",
