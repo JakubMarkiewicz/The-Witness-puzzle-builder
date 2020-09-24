@@ -16,7 +16,7 @@ let getElementByCords =
     ReactEvent.Mouse.clientX(event) - int_of_float(xBound),
     ReactEvent.Mouse.clientY(event) - int_of_float(yBound),
   );
-  let (rowI, colI) = (x / gridSize, y / gridSize);
+  let (rowI, colI) = (y / gridSize, x / gridSize);
 
   (rowI, colI);
 };
@@ -65,8 +65,8 @@ let drawOnCanvas =
               : setFillStyle(context, String, "rgba(255,255,255,0.05)");
             fillRect(
               context,
-              ~x=rowPos,
-              ~y=colPos,
+              ~x=colPos,
+              ~y=rowPos,
               ~w=float_of_int(gridSize),
               ~h=float_of_int(gridSize),
             );
@@ -77,11 +77,35 @@ let drawOnCanvas =
               : setFillStyle(context, String, "rgba(255,255,255,0.1)");
             fillRect(
               context,
-              ~x=rowPos,
-              ~y=colPos,
+              ~x=colPos,
+              ~y=rowPos,
               ~w=float_of_int(gridSize),
               ~h=float_of_int(gridSize),
             );
+          };
+          // print symbols
+          switch (v) {
+          | GameTypes.Path(path) =>
+            switch (path.type_) {
+            | Some(type_) =>
+              let symbol = GameTypes.pathTypesToData(type_).visual;
+              Webapi.Canvas.Canvas2d.setFillStyle(
+                context,
+                String,
+                "rgb(255,255,255)",
+              );
+              Webapi.Canvas.Canvas2d.font(context, "30px Arial");
+              Webapi.Canvas.Canvas2d.textAlign(context, "center");
+              Webapi.Canvas.Canvas2d.textBaseline(context, "middle");
+              Webapi.Canvas.Canvas2d.fillText(
+                ~x=colPos +. 20.,
+                ~y=rowPos +. 20.,
+                symbol,
+                context,
+              );
+            | None => ()
+            }
+          | _ => ()
           };
         },
         v,
@@ -92,12 +116,12 @@ let drawOnCanvas =
   // highlight selected field
   switch (activeField) {
   | Some(field) =>
-    let (x, y) = field.cords;
-    setFillStyle(context, String, "rgba(255,255,255,0.5)");
+    let (rowI, colI) = field.cords;
+    setFillStyle(context, String, "rgba(255,255,255,0.3)");
     fillRect(
       context,
-      ~x=float_of_int(x * gridSize),
-      ~y=float_of_int(y * gridSize),
+      ~x=float_of_int(colI * gridSize),
+      ~y=float_of_int(rowI * gridSize),
       ~w=float_of_int(gridSize),
       ~h=float_of_int(gridSize),
     );
@@ -139,8 +163,8 @@ let handleClick =
   let element: GameTypes.node = gameState[rowI][colI];
   let newElement: GameTypes.node =
     switch (element) {
-    | Node(node) => Node(node.active ? {active: false} : {active: true})
-    | Path(path) => Path(path.active ? {active: false} : {active: true})
+    | Node(node) => Node({active: !node.active})
+    | Path(path) => Path({active: !path.active, type_: path.type_})
     };
 
   let newActiveField: option(GameTypes.activeField) =
@@ -177,7 +201,7 @@ let handleClick =
             |> Js.Array.length > 0;
           switch (activeAround) {
           | true => ()
-          | _ => newGameState[x][y] = Path({active: node.active})
+          | _ => newGameState[x][y] = Path({active: node.active, type_: None})
           };
         };
       };

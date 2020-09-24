@@ -7,14 +7,17 @@ let handleCheck =
         unit,
       gameState,
       setGameState,
+      setForceUpdate,
     ) => {
-  Js.log(value);
   let (rowI, colI) = activeElement.cords;
 
   setActiveField(_ =>
     switch (activeElement.node) {
-    | Path(_) =>
-      Some({node: Path({active: value}), cords: activeElement.cords})
+    | Path(path) =>
+      Some({
+        node: Path({active: value, type_: path.type_}),
+        cords: activeElement.cords,
+      })
     | Node(_) =>
       Some({node: Node({active: value}), cords: activeElement.cords})
     }
@@ -24,11 +27,52 @@ let handleCheck =
 
   let newGameState = gameState;
   switch (activeElement.node) {
-  | Path(_) => newGameState[rowI][colI] = GameTypes.Path({active: value})
+  | Path(path) =>
+    newGameState[rowI][colI] =
+      GameTypes.Path({active: value, type_: path.type_})
   | Node(_) => newGameState[rowI][colI] = GameTypes.Node({active: value})
   };
 
   setGameState(_ => newGameState);
+  setForceUpdate(v => v + 1);
+};
+
+let handleTypeChange =
+    (
+      value: option(GameTypes.pathTypes),
+      activeElement: GameTypes.activeField,
+      setActiveField:
+        (option(GameTypes.activeField) => option(GameTypes.activeField)) =>
+        unit,
+      gameState,
+      setGameState,
+      setForceUpdate,
+    ) => {
+  let (rowI, colI) = activeElement.cords;
+
+  setActiveField(_ =>
+    switch (activeElement.node) {
+    | Path(path) =>
+      Some({
+        node: Path({active: path.active, type_: value}),
+        cords: activeElement.cords,
+      })
+    | Node(node) =>
+      Some({node: Node({active: node.active}), cords: activeElement.cords})
+    }
+  );
+
+  let newGameState = gameState;
+  switch (activeElement.node) {
+  | Path(path) =>
+    newGameState[rowI][colI] =
+      GameTypes.Path({active: path.active, type_: value})
+  | Node(node) =>
+    newGameState[rowI][colI] = GameTypes.Node({active: node.active})
+  };
+
+  setGameState(_ => newGameState);
+  setForceUpdate(v => v + 1);
 };
 
 [@react.component]
@@ -40,6 +84,7 @@ let make =
       ~setView,
       ~activeField: option(GameTypes.activeField),
       ~setActiveField,
+      ~setForceUpdate,
     ) => {
   let handleActiveChange = (ev, field) =>
     handleCheck(
@@ -48,6 +93,7 @@ let make =
       setActiveField,
       gameState,
       setGameState,
+      setForceUpdate,
     );
   <div
     className=[%tw
@@ -57,8 +103,9 @@ let make =
       <Button
         text="Restart"
         onClick={_ => {
-          setGameState(_ => {PuzzleBuilderUtils.createInitialState()});
+          setGameState(_ => PuzzleBuilderUtils.createInitialState());
           setActiveField(_ => None);
+          setForceUpdate(v => v + 1);
         }}
         className=[%tw "mr-1"]
         disabled={view === GameTypes.Player}
@@ -71,10 +118,12 @@ let make =
           }
         }
         onClick={_ => {
+          setActiveField(_ => None);
+          setForceUpdate(v => v + 1);
           switch (view) {
           | Builder => setView(_ => GameTypes.Player)
           | Player => setView(_ => GameTypes.Builder)
-          }
+          };
         }}
         className=[%tw "mr-1"]
       />
@@ -98,10 +147,65 @@ let make =
                  checked={path.active}
                  onChange={ev => handleActiveChange(ev, field)}
                />
-               <span className="ml-2 text-gray-700">
+               <span className="mx-2 text-gray-700">
                  {React.string("Active")}
                </span>
              </label>
+             <Tippy
+               className=[%tw "bg-white"]
+               content={
+                 <div>
+                   {[|GameTypes.Start, GameTypes.End|]
+                    |> Array.map((pathType: GameTypes.pathTypes) => {
+                         let data = GameTypes.pathTypesToData(pathType);
+                         let active =
+                           switch (activeField) {
+                           | Some(activeField) =>
+                             switch (activeField.node) {
+                             | Path(path) when path.type_ === Some(pathType) =>
+                               true
+                             | _ => false
+                             }
+                           | None => false
+                           };
+                         <div
+                           className=Cn.(
+                             [%tw
+                               "flex justify-between w-40 p-4 rounded cursor-pointer"
+                             ]
+                             + [%tw "hover:bg-gray-200"]->on(!active)
+                             + [%tw "bg-gray-400 hover:bg-red-200"]
+                               ->on(active)
+                           )
+                           onClick={_ =>
+                             handleTypeChange(
+                               active ? None : Some(pathType),
+                               field,
+                               setActiveField,
+                               gameState,
+                               setGameState,
+                               setForceUpdate,
+                             )
+                           }>
+                           <div> {React.string(data.visual)} </div>
+                           <div> {React.string(data.string)} </div>
+                         </div>;
+                       })
+                    |> React.array}
+                 </div>
+               }
+               arrow=false
+               theme="light"
+               placement="bottom"
+               interactive=true>
+               <div className=[%tw "px-4 py-1 rounded border-2"]>
+                 {Belt.Option.mapWithDefault(
+                    path.type_, "Select type", (type_: GameTypes.pathTypes) =>
+                    GameTypes.pathTypesToData(type_).string
+                  )
+                  |> React.string}
+               </div>
+             </Tippy>
            </>
          | Node(node) =>
            <>
