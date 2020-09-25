@@ -5,7 +5,7 @@ let make = (~gameState) => {
   <canvas
     width="600px"
     height="600px"
-    className=[%tw "absolute"]
+    className=[%tw "absolute mt-4 top-0"]
     onMouseDown={ev =>
       GameCanvasPlayerUtils.handleMouseDown(~ev, ~gameState, ~setPainting)
     }

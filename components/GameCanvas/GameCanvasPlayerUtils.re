@@ -39,15 +39,23 @@ let handleOnMouseMove = (~ev, ~gameState, ~painting, ~path, ~setPath) => {
       | GameTypes.Path(p) => p.active
       | _ => false
       };
-    switch (inPath, inGamePath) {
-    | (false, true) =>
+    let nextElementConnected =
+      switch (Array.length(path)) {
+      | l when l > 0 =>
+        let (prevElementRowI, prevElementColI) = path[Array.length(path) - 1];
+        let horizontal =
+          abs(prevElementRowI - rowI) <= 1 && prevElementColI === colI;
+        let vertical =
+          abs(prevElementColI - colI) <= 1 && prevElementRowI === rowI;
+        horizontal || vertical;
+      | _ => true
+      };
+
+    switch (nextElementConnected, inPath, inGamePath) {
+    | (true, false, true) =>
       setPath(path => Array.concat([path, [|(rowI, colI)|]]));
       // paint path
-      Webapi.Canvas.Canvas2d.setFillStyle(
-        context,
-        String,
-        "rgba(255,255,255,0.3)",
-      );
+      Webapi.Canvas.Canvas2d.setFillStyle(context, String, "#ebdc87");
       Webapi.Canvas.Canvas2d.fillRect(
         context,
         ~x=float_of_int(colI * 40),
@@ -55,7 +63,7 @@ let handleOnMouseMove = (~ev, ~gameState, ~painting, ~path, ~setPath) => {
         ~w=float_of_int(40),
         ~h=float_of_int(40),
       );
-    | (true, _) =>
+    | (_, true, _) =>
       // handle going back
       let (lastX, lastY) = path[Array.length(path) - 1];
       let isLastElement = rowI === lastX && colI === lastY;
@@ -121,13 +129,50 @@ let paintValidatedPath = (~canvas, ~path, ~valid) => {
   );
 };
 
+let validateHexagons = (~gameState, ~path) => {
+  let hexagons =
+    gameState
+    |> Js.Array.reducei(
+         (acc: array((int, int)), v, rowI) => {
+           let vals =
+             Js.Array.reducei(
+               (accInner, v, colI) =>
+                 switch (v) {
+                 | GameTypes.Path(path) =>
+                   switch (path.type_) {
+                   | Some(GameTypes.Hexagon) =>
+                     Array.concat([accInner, [|(rowI, colI)|]])
+                   | _ => accInner
+                   }
+                 | _ => accInner
+                 },
+               [||],
+               v,
+             );
+           Array.concat([acc, vals]);
+         },
+         [||],
+       );
+
+  let allHexagonsValid: bool =
+    hexagons
+    |> Js.Array.every(((rowI, colI)) =>
+         Js.Array.some(
+           ((pathRowI, pathColI)) => rowI === pathRowI && colI === pathColI,
+           path,
+         )
+       );
+
+  allHexagonsValid;
+};
+
 let validatePath = (~canvas, ~gameState, ~path) => {
   let (rowI, colI) = path[Array.length(path) - 1];
   let validEnd =
     switch (gameState[rowI][colI]) {
-    | GameTypes.Path(path) =>
-      switch (path.type_) {
-      | Some(End) => true
+    | GameTypes.Path(p) =>
+      switch (p.type_) {
+      | Some(End) => validateHexagons(~gameState, ~path)
       | _ => false
       }
     | _ => false
@@ -141,7 +186,11 @@ let validatePath = (~canvas, ~gameState, ~path) => {
 
 let handleOnMouseUp = (~ev, ~gameState, ~setPainting, ~setPath, ~path) => {
   let canvas = ReactEvent.Mouse.target(ev) |> convertTargetToDomElement;
-  validatePath(~canvas, ~gameState, ~path);
+  switch (path) {
+  | p when Array.length(p) > 0 => validatePath(~canvas, ~gameState, ~path)
+  | _ => ()
+  };
+
   setPainting(_ => false);
   setPath(_ => [||]);
 };

@@ -3,3 +3,9 @@
 @tailwind components;
 
 @tailwind utilities;
+
+#__next {
+    height: 100vh;
+    overflow: hidden;
+  }
+  

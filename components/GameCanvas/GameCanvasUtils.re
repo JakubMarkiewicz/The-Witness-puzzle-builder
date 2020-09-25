@@ -1,6 +1,23 @@
 // TODO: probably changable
 let gridSize = 40;
 
+[@bs.send]
+external drawImage:
+  (
+    Webapi.Canvas.Canvas2d.t,
+    ~image: Webapi.Dom.HtmlImageElement.t,
+    ~dx: float,
+    ~dy: float,
+    ~dWidth: float=?,
+    ~dHeight: float=?,
+    ~sx: float=?,
+    ~sy: float=?,
+    ~sWidth: float=?,
+    ~sHeight: float=?,
+    unit
+  ) =>
+  unit;
+
 type dimensions = {
   width: float,
   height: float,
@@ -97,12 +114,27 @@ let drawOnCanvas =
               Webapi.Canvas.Canvas2d.font(context, "30px Arial");
               Webapi.Canvas.Canvas2d.textAlign(context, "center");
               Webapi.Canvas.Canvas2d.textBaseline(context, "middle");
-              Webapi.Canvas.Canvas2d.fillText(
-                ~x=colPos +. 20.,
-                ~y=rowPos +. 20.,
-                symbol,
-                context,
-              );
+              switch (symbol) {
+              | String(symbol) =>
+                Webapi.Canvas.Canvas2d.fillText(
+                  ~x=colPos +. 20.,
+                  ~y=rowPos +. 20.,
+                  symbol,
+                  context,
+                )
+              | Svg(symbol) =>
+                // TODO: remove js, probably extend webapi lib
+                %raw
+                {|
+  (function a ( ) {
+    var img = new Image();
+img.onload = function() {
+context.drawImage(img, colPos + 10, rowPos + 11);
+}
+img.src = symbol[0];
+  })()
+|}
+              };
             | None => ()
             }
           | _ => ()

@@ -4,17 +4,22 @@ type state =
 
 type pathTypes =
   | Start
-  | End;
+  | End
+  | Hexagon;
 
+type visualType =
+  | String(string)
+  | Svg(string);
 type pathTypeData = {
   string,
-  visual: string,
+  visual: visualType,
 };
 
 let pathTypesToData = pathType =>
   switch (pathType) {
-  | Start => {string: "Start", visual: "S"}
-  | End => {string: "End", visual: "E"}
+  | Start => {string: "Start", visual: String("S")}
+  | End => {string: "End", visual: String("E")}
+  | Hexagon => {string: "Hexagon", visual: Svg("/static/hexagon.svg")}
   };
 
 type testNode = {active: bool};
