@@ -1,23 +1,6 @@
 // TODO: probably changable
 let gridSize = 40;
 
-[@bs.send]
-external drawImage:
-  (
-    Webapi.Canvas.Canvas2d.t,
-    ~image: Webapi.Dom.HtmlImageElement.t,
-    ~dx: float,
-    ~dy: float,
-    ~dWidth: float=?,
-    ~dHeight: float=?,
-    ~sx: float=?,
-    ~sy: float=?,
-    ~sWidth: float=?,
-    ~sHeight: float=?,
-    unit
-  ) =>
-  unit;
-
 type dimensions = {
   width: float,
   height: float,
@@ -87,18 +70,7 @@ let drawOnCanvas =
               ~w=float_of_int(gridSize),
               ~h=float_of_int(gridSize),
             );
-          | GameTypes.Node(node) =>
-            let active = node.active;
-            active
-              ? setFillStyle(context, String, "rgba(255,0,0,0.7)")
-              : setFillStyle(context, String, "rgba(255,255,255,0.1)");
-            fillRect(
-              context,
-              ~x=colPos,
-              ~y=rowPos,
-              ~w=float_of_int(gridSize),
-              ~h=float_of_int(gridSize),
-            );
+          | _ => ()
           };
           // print symbols
           switch (v) {
@@ -126,18 +98,34 @@ let drawOnCanvas =
                 // TODO: remove js, probably extend webapi lib
                 %raw
                 {|
-  (function a ( ) {
-    var img = new Image();
-img.onload = function() {
-context.drawImage(img, colPos + 10, rowPos + 11);
-}
-img.src = symbol[0];
-  })()
-|}
+                (function a ( ) {
+                  var img = new Image();
+              img.onload = function() {
+              context.drawImage(img, colPos + 10, rowPos + 11);
+              }
+              img.src = symbol[0];
+                })()
+              |}
               };
             | None => ()
             }
-          | _ => ()
+          | GameTypes.Node(node) =>
+            switch (node.type_) {
+            | Some(Color(Some(color))) =>
+              Webapi.Canvas.Canvas2d.setFillStyle(
+                context,
+                String,
+                GameTypes.nodeColorToColor(color),
+              );
+              Webapi.Canvas.Canvas2d.fillRect(
+                context,
+                ~x=colPos +. 3.,
+                ~y=rowPos +. 3.,
+                ~w=float_of_int(gridSize - 6),
+                ~h=float_of_int(gridSize - 6),
+              );
+            | _ => ()
+            }
           };
         },
         v,
@@ -191,11 +179,10 @@ let handleClick =
     ) => {
   let (rowI, colI) = getElementByCords(event, canvas);
 
-  // TODO: Check if there is a safer way
   let element: GameTypes.node = gameState[rowI][colI];
   let newElement: GameTypes.node =
     switch (element) {
-    | Node(node) => Node({active: !node.active})
+    | Node(node) => Node({active: !node.active, type_: node.type_})
     | Path(path) => Path({active: !path.active, type_: path.type_})
     };
 
@@ -204,7 +191,6 @@ let handleClick =
 
   setActiveField(_ => newActiveField);
   let newGameState = gameState;
-  // TODO: Check if there is a safer way
   newGameState[rowI][colI] = newElement;
 
   // handle paths
@@ -220,16 +206,16 @@ let handleClick =
             Belt.Array.makeBy(9, v => (x - 1 + v mod 3, y - 1 + v / 3))
             |> Js.Array.filter(((xNew, yNew)) => {
                  let inBounds =
-                   xNew >= 0 && yNew >= 0 && xNew <= 15 && yNew <= 15;
+                   xNew >= 0 && yNew >= 0 && xNew < 15 && yNew < 15;
                  let selectedNode = xNew === rowI && yNew === colI;
                  inBounds && !selectedNode;
                })
-            |> Js.Array.filter(((xNew, yNew)) =>
+            |> Js.Array.filter(((xNew, yNew)) => {
                  switch (newGameState[xNew][yNew]) {
                  | Node(node) => node.active
                  | _ => false
                  }
-               )
+               })
             |> Js.Array.length > 0;
           switch (activeAround) {
           | true => ()

@@ -8,7 +8,7 @@ let createInitialState = () =>
          Array.mapi(
            (colI, _) =>
              switch (colI mod 2 !== 0) {
-             | true => GameTypes.Node({active: false})
+             | true => GameTypes.Node({active: false, type_: None})
              | _ => GameTypes.Path({active: false, type_: None})
              },
            rowV,

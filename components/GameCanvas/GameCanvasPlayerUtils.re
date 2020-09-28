@@ -129,41 +129,64 @@ let paintValidatedPath = (~canvas, ~path, ~valid) => {
   );
 };
 
-let validateHexagons = (~gameState, ~path) => {
-  let hexagons =
-    gameState
-    |> Js.Array.reducei(
-         (acc: array((int, int)), v, rowI) => {
-           let vals =
-             Js.Array.reducei(
-               (accInner, v, colI) =>
-                 switch (v) {
-                 | GameTypes.Path(path) =>
-                   switch (path.type_) {
-                   | Some(GameTypes.Hexagon) =>
-                     Array.concat([accInner, [|(rowI, colI)|]])
-                   | _ => accInner
-                   }
-                 | _ => accInner
-                 },
-               [||],
-               v,
-             );
-           Array.concat([acc, vals]);
-         },
-         [||],
-       );
-
-  let allHexagonsValid: bool =
-    hexagons
-    |> Js.Array.every(((rowI, colI)) =>
-         Js.Array.some(
-           ((pathRowI, pathColI)) => rowI === pathRowI && colI === pathColI,
-           path,
+let seperateNodes = (~path, ~gameState) => {
+  let around = (row, col) =>
+    [|(row - 1, col), (row, col - 1), (row, col + 1), (row + 1, col)|]
+    |> Js.Array.filter(((r, c)) =>
+         !(
+           r < 0
+           || c < 0
+           || r > Array.length(path)
+           - 1
+           || c > Array.length(path)
+           - 1
          )
        );
 
-  allHexagonsValid;
+  let seperatedNodes = [||];
+
+  //TODO: rewrite to reduce
+  for (row in 0 to Array.length(gameState) - 1) {
+    for (col in 0 to Array.length(gameState[0]) - 1) {
+      let element = gameState[row][col];
+      let isPath =
+        Js.Array.some(((pRow, pCol)) => row === pRow && col === pCol, path);
+      let active =
+        (
+          switch ((element: GameTypes.node)) {
+          | Path(p) => p.active
+          | Node(n) => n.active
+          }
+        )
+        && !isPath;
+
+      switch (active) {
+      | true =>
+        let aroundFields = around(row, col);
+        let resIndex =
+          seperatedNodes
+          |> Js.Array.findIndex(sN =>
+               sN
+               |> Js.Array.some(((resRow, resCol)) =>
+                    aroundFields
+                    |> Js.Array.some(((aroundRow, aroundCol)) =>
+                         aroundRow === resRow && aroundCol === resCol
+                       )
+                  )
+             );
+        switch (resIndex) {
+        | (-1) =>
+          Js.Array.push([|(row, col)|], seperatedNodes) |> ignore;
+          ();
+        | _ =>
+          seperatedNodes[resIndex] =
+            Js.Array.concat(seperatedNodes[resIndex], [|(row, col)|])
+        };
+      | _ => ()
+      };
+    };
+  };
+  seperatedNodes;
 };
 
 let validatePath = (~canvas, ~gameState, ~path) => {
@@ -172,7 +195,13 @@ let validatePath = (~canvas, ~gameState, ~path) => {
     switch (gameState[rowI][colI]) {
     | GameTypes.Path(p) =>
       switch (p.type_) {
-      | Some(End) => validateHexagons(~gameState, ~path)
+      | Some(End) =>
+        let seperatedAreas = seperateNodes(~path, ~gameState);
+        let colors =
+          GameCanvasValidators.validateColors(~gameState, ~seperatedAreas);
+        let hexagons =
+          GameCanvasValidators.validateHexagons(~gameState, ~path);
+        colors && hexagons;
       | _ => false
       }
     | _ => false

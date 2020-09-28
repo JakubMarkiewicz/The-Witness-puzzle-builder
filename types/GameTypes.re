@@ -2,6 +2,21 @@ type state =
   | Builder
   | Player;
 
+type nodeColor =
+  | White
+  | Black
+  | Green;
+
+let nodeColorToColor = nodeColor =>
+  switch (nodeColor) {
+  | White => "#fff"
+  | Black => "#000"
+  | Green => "#799351"
+  };
+
+type nodeTypes =
+  | Color(option(nodeColor));
+
 type pathTypes =
   | Start
   | End
@@ -22,7 +37,15 @@ let pathTypesToData = pathType =>
   | Hexagon => {string: "Hexagon", visual: Svg("/static/hexagon.svg")}
   };
 
-type testNode = {active: bool};
+let nodeTypesToData = nodeType =>
+  switch (nodeType) {
+  | Color(_) => {string: "Color", visual: String("C")}
+  };
+
+type testNode = {
+  active: bool,
+  type_: option(nodeTypes),
+};
 
 type testPath = {
   active: bool,

@@ -30,7 +30,7 @@ let make = () => {
          ]>
          {instructions
           |> Array.map(v =>
-               <div className=[%tw "mr-4"]>
+               <div key={v.key} className=[%tw "mr-4"]>
                  <div className=[%tw "font-extrabold"]>
                    {React.string(v.key)}
                  </div>
